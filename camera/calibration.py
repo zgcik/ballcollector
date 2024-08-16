@@ -7,9 +7,9 @@ obj_points = []
 img_points = []
 
 objp = np.zeros((np.prod(board_size), 3), np.float32)
-objp[:,:2] = np.mgrid[0:board_size[0], 0:board_size[1]].T.reshape(-1,2)
+objp[:, :2] = np.mgrid[0 : board_size[0], 0 : board_size[1]].T.reshape(-1, 2)
 
-imgs = [cv2.imread(f'cal_img_{i}.jpg') for i in range(1,21)]
+imgs = [cv2.imread(f"cal_img_{i}.jpg") for i in range(1, 21)]
 
 for img in imgs:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -19,7 +19,7 @@ for img in imgs:
         obj_points.append(objp)
         img_points.append(corners)
 
-ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)
+ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, gray.shape[::-1], None, None)  # type: ignore
 
-print('Camera Matrix:\n', camera_matrix)
-print('Distortion Coefficients:\n', dist_coeffs)
+print("Camera Matrix:\n", camera_matrix)
+print("Distortion Coefficients:\n", dist_coeffs)
