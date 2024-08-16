@@ -5,12 +5,26 @@ import numpy as np
 import imutils
 import time
 
-from camera.camera import get_frame
+import camera
 
+try:
+    cv2.waitKey(1)
+    headless = False
+except:
+    headless = True
+
+print(f"headless: {headless}")
+
+
+def imshow(name: str, frame: np.ndarray):
+    if not headless:
+        cv2.imshow(name, frame)
+        cv2.waitKey(1)
+
+
+# Detection bounds
 greenLower = (29, 86, 6)
 greenUpper = (64, 255, 255)
-# if a video path was not supplied, grab the reference
-# to the webcam
 
 buffer = 2
 pts = deque(maxlen=2)
@@ -19,7 +33,7 @@ pts = deque(maxlen=2)
 def detection_loop():
     while True:
         # grab the current frame
-        frame = get_frame()
+        frame = utils.get_frame()
         # resize the frame, blur it, and convert it to the HSV
         # color space
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -30,6 +44,7 @@ def detection_loop():
         mask = cv2.inRange(hsv, greenLower, greenUpper)  # type: ignore
         mask = cv2.erode(mask, None, iterations=2)  # type: ignore
         mask = cv2.dilate(mask, None, iterations=2)  # type: ignore
+        imshow("mask", mask)
         # find contours in the mask and initialize the current
         # (x, y) center of the ball
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -60,8 +75,8 @@ def detection_loop():
             # draw the connecting lines
             thickness = int(np.sqrt(buffer / float(i + 1)) * 2.5)
             cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
-        cv2.imwrite("test/green-detect.jpg", frame)
-        time.sleep(0.5)
+        # cv2.imwrite("test/green-detect.jpg", frame)
+        imshow("overlayed", frame)
         # key = input("frame")
         # if key == "q":
         #     break
@@ -69,3 +84,4 @@ def detection_loop():
 
 if __name__ == "__main__":
     detection_loop()
+    cv2.destroyAllWindows()
