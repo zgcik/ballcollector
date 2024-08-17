@@ -5,7 +5,7 @@ import numpy as np
 import imutils
 import time
 
-import camera
+import utils
 
 try:
     cv2.waitKey(1)
