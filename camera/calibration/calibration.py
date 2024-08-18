@@ -1,5 +1,20 @@
 import cv2
 import numpy as np
+import utils
+
+def cal_imgs():
+    i = 0
+    while True:
+        # take pic with 'c'
+        if cv2.waitKey(1) == ord('c'):
+            utils.save_frame('imgs/cal_img_{i}.jpg')
+            i += 1
+        # break with 'q'
+        elif cv2.waitKey(1) == ord('q'):
+            break
+    print('done')
+
+
 
 def calibrate_camera():
     board_size = (9, 6)
@@ -30,4 +45,5 @@ def calibrate_camera():
 
 
 if __name__ == "__main__":
+    cal_imgs()
     calibrate_camera()
