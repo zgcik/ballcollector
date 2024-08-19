@@ -65,7 +65,24 @@ def run_motor_backward(motor, speed_mps):
 def stop_motor():
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.LOW)
-    pwm1.ChangeDutyCycle(0) 
+    pwm1.ChangeDutyCycle(0)
+
+
+# Setup for the SERVO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(16, GPIO.OUT)
+
+# Set up PWM on GPIO18 with 50Hz frequency
+pwm = GPIO.PWM(16, 50)
+pwm.start(0)
+
+def set_servo_angle(angle):
+    duty = angle / 18 + 2  # Convert angle to duty cycle
+    GPIO.output(16, True)
+    pwm.ChangeDutyCycle(duty)
+    time.sleep(1)
+    GPIO.output(16, False)
+    pwm.ChangeDutyCycle(0)
 
 # Main loop
 # try:
