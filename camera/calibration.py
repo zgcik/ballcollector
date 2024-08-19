@@ -74,8 +74,8 @@ def calibrate_camera():
     print("camera matrix:\n", camera_matrix)
     print("distortion coefficients:\n", dist_coeffs)
 
-    np.save(os.path.join(script_dir, 'calibration', 'camera_matrix.npy'), camera_matrix)
-    np.save(os.path.join(script_dir, 'calibration', 'dist_coeffs.npy'), dist_coeffs)
+    np.save(os.path.join(script_dir, 'calibration', 'int_matrix.npy'), camera_matrix)
+    np.save(os.path.join(script_dir, 'calibration', 'dist_matrix.npy'), dist_coeffs)
 
 
 if __name__ == "__main__":
