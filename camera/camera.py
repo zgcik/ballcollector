@@ -32,28 +32,6 @@ class Camera:
 
         return np.array([x, y])
 
-
-    # def dis_to_line(self, point, line_point1, line_point2):
-    #     # line segment vector
-    #     line_vec = line_point2 - line_point1
-
-    #     # vector from line_point1 to the point
-    #     point_vec = point - line_point1
-        
-    #     # project point_vec onto line_vec
-    #     line_len = np.linalg.norm(line_vec)
-    #     line_unit_vec = line_vec / line_len
-    #     projection = np.dot(point_vec, line_unit_vec)
-        
-    #     # clamp the projection to the line segment
-    #     projection = np.clip(projection, 0, line_len)
-        
-    #     # calculate the closest point on the line segment
-    #     closest_point = line_point1 + projection * line_unit_vec
-        
-    #     # return the distance between the point and the closest point
-    #     return np.linalg.norm(point - closest_point)
-
     def line_detector(self):
         # retrieving image frame
         self.frame = utils.get_frame()
@@ -82,15 +60,6 @@ class Camera:
                     # convert line endpoints to normalized camera coordinates
                     p1_norm = np.array([(x1 - cx) / self.int_matrix[0, 0], (y1 - cy) / self.int_matrix[1, 1]])
                     p2_norm = np.array([(x2 - cx) / self.int_matrix[0, 0], (y2 - cy) / self.int_matrix[1, 1]])
-
-                    # calculate distance from camera center to line
-                    # dis = self.dis_to_line(np.array([0, 0]), p1_norm, p2_norm)
-                    # distances[f'{line}'] = dis
-
-                    # text = f"{dis:.2f}"
-                    # midpoint = ((x1 + x2) // 2, (y1 + y2) // 2)
-                    # offset = (10, 10)
-                    # cv2.putText(frame, text, (midpoint[0] + offset[0], midpoint[1] + offset[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv2.LINE_AA)
 
                 return distances
             
@@ -122,6 +91,8 @@ class Camera:
         balls = []
 
         # for c in cnts:
+        if len(cnts) == 0: return
+
         c = max(cnts, key=cv2.contourArea)
         ((x, y), radius) = cv2.minEnclosingCircle(c)
         M = cv2.moments(c)
@@ -156,7 +127,7 @@ if __name__ == "__main__":
     cam = Camera()
     while True:
         # line detection
-        line_dis = cam.line_detector()
+        # line_dis = cam.line_detector()
 
         # circle detection
         circles = cam.circle_detector()
