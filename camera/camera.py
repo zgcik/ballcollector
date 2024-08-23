@@ -20,6 +20,8 @@ class Camera:
         self.dist_matrix = np.load(f'{script_dir}/calibration/dist_matrix.npy')
 
         self.detector = Detector(f'{script_dir}/model.pt')
+        self.detections = []
+
         # self.green_lower = (29, 86, 6)
         # self.green_upper = (64, 255, 255)
         # self.buffer = 5
@@ -54,10 +56,13 @@ class Camera:
         bboxes, img_out = self.detector.detect_img(self.frame)
         self.frame = img_out
 
-        targets = []
         for detection in bboxes:
-            targets.append(target_est.target_pose_est(rob_pose, detection))
-        return targets
+            self.targets.append(target_est.target_pose_est(self.int_matrix, detection, rob_pose))
+        
+        if len(bboxes) > 0:
+            self.detections = target_est.merge_ests(self.detections)
+        
+        return self.detections
 
 
     # def line_detector(self):
@@ -197,11 +202,8 @@ if __name__ == "__main__":
     cam = Camera()
     while True:
         cam.get_frame()
-        # # line detection
-        # line_dis = cam.line_detector() # TODO: requires calibration of parameters
 
-        # # circle detection
-        # circles = cam.circle_detector(max_count=2)
+        # circle detection
         bboxes, img_out = cam.ball_detector()
 
         if cv2.waitKey(1) == ord("q"):
