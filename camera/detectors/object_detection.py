@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import cv2
 import os
 import numpy as np
@@ -25,7 +25,7 @@ class ObjectDetector(BallDetector):
         self,
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
-    ) -> list[BallDetection]:
+    ) -> tuple[list[Any], list[BallDetection]]:
         bboxes = self.get_bboxes(frame)
         logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
@@ -62,7 +62,7 @@ class ObjectDetector(BallDetector):
                     self.class_colour[bbox[0]],
                     2,
                 )
-        return balls
+        return bboxes, balls
 
     def get_bboxes(self, cv_img):
         preds = self.model.predict(cv_img, imgsz=320, verbose=False)

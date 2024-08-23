@@ -7,29 +7,7 @@ from detectors.object_detection import ObjectDetector
 from collections import deque
 import imutils
 import os
-from detector import Detector
 import camera.target_est as target_est
-
-import logging
-
-logger = logging.getLogger(__name__)
-
-try:
-    cv2.waitKey(1)
-    headless = False
-except:
-    headless = True
-logger.info("headless mode:", headless)
-
-
-def is_headless():
-    return headless
-
-
-def imshow(name: str, frame: np.ndarray):
-    if not headless:
-        cv2.imshow(name, frame)
-        cv2.waitKey(1)
 
 
 import logging
@@ -75,6 +53,7 @@ class Camera:
             os.path.join(os.path.dirname(__file__), "detectors/model.pt")
         )
         self.line_detector = LineDetector(self.int_matrix)
+        self.targets = []
 
     def get_frame(self):
         _, frame = self.camera.read()
@@ -112,9 +91,7 @@ class Camera:
         return balls
 
     def ball_detector(self, rob_pose):
-        bboxes, img_out = self.detector.detect_img(self.frame)
-        self.frame = img_out
-
+        bboxes, _ = self.object_detector.detect(self.frame)
         for detection in bboxes:
             self.targets.append(
                 target_est.target_pose_est(self.int_matrix, detection, rob_pose)
