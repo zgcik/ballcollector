@@ -190,7 +190,7 @@ if __name__ == "__main__":
     while True:
         cam.get_frame()
         # line detection
-        # line_dis = cam.line_detector()
+        line_dis = cam.line_detector() # TODO: requires calibration of parameters
 
         # circle detection
         circles = cam.circle_detector(max_count=2)
