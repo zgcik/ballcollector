@@ -45,7 +45,7 @@ def calibrateWheelRadius():
     delta_times = []
 
     for wheel_vel in wheel_velocities_range:
-        print("Driving at {}% speed.".format(wheel_vel))
+        print(f"Driving at {wheel_vel}% speed.")
         while True:
             delta_time = input("Input the time to drive in seconds: ")
             try:
@@ -60,7 +60,7 @@ def calibrateWheelRadius():
             uInput = input("Did the robot travel 1m?[y/N]")
             if uInput == 'y':
                 delta_times.append(delta_time)
-                print("Recording that the robot drove 1m in {:.2f} seconds at {}% speed.\n".format(delta_time, wheel_vel))
+                print(f"Recording that the robot drove 1m in {delta_time:.2f} seconds at {wheel_vel} speed.\n")
                 break
 
     scale_array = []
@@ -69,7 +69,7 @@ def calibrateWheelRadius():
         scale_array.append(vel_world / wheel_vel)
 
     scale = sum(scale_array) / len(scale_array)
-    print("The scale parameter is estimated as {:.6f} m/%.format(scale))
+    print(f"The scale parameter is estimated as {scale:.6f}")
 
     return scale
 
@@ -78,7 +78,7 @@ def calibrateBaseline(scale):
     delta_times = []
 
     for wheel_vel in wheel_velocities_range:
-        print("Spinning at {}% speed.".format(wheel_vel))
+        print(f"Spinning at {wheel_vel} speed.")
         while True:
             delta_time = input("Input the time to spin 360 degrees in seconds: ")
             try:
@@ -93,7 +93,7 @@ def calibrateBaseline(scale):
             uInput = input("Did the robot spin 360 degrees?[y/N]")
             if uInput == 'y':
                 delta_times.append(delta_time)
-                print("Recording that the robot spun 360 degrees in {:.2f} seconds at {}% speed.\n".format(delta_time, wheel_vel))
+                print(f"Recording that the robot spun 360 degrees in {delta_time:.2f} seconds at {wheel_vel} speed.\n")
                 break
 
     baseline_array = []
@@ -101,7 +101,7 @@ def calibrateBaseline(scale):
         baseline_array.append(scale * wheel_vel * delta_time / np.pi)
 
     baseline = sum(baseline_array) / len(baseline_array)
-    print("The baseline parameter is estimated as {:.6f} m.".format(baseline))
+    print(f"The baseline parameter is estimated as {baseline:.6f} m.")
 
     return baseline
 
@@ -110,12 +110,12 @@ if __name__ == "__main__":
 
     print('Calibrating robot scale...\n')
     scale = calibrateWheelRadius()
-    fileNameS = "{}scale.txt".format(dataDir)
+    fileNameS = f"{dataDir}scale.txt"
     np.savetxt(fileNameS, np.array([scale]), delimiter=',')
 
     print('Calibrating robot baseline...\n')
     baseline = calibrateBaseline(scale)
-    fileNameB = "{}baseline.txt".format(dataDir)
+    fileNameB = f"{dataDir}baseline.txt"
     np.savetxt(fileNameB, np.array([baseline]), delimiter=',')
 
     print('Finished calibration')
