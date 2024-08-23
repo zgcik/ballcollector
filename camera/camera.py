@@ -5,7 +5,7 @@ from collections import deque
 import imutils
 import os
 from detector import Detector
-import pose_est
+import camera.target_est as target_est
 
 
 class Camera:
@@ -56,7 +56,7 @@ class Camera:
 
         targets = []
         for detection in bboxes:
-            targets.append(pose_est.target_pose_est(rob_pose, detection))
+            targets.append(target_est.target_pose_est(rob_pose, detection))
         return targets
 
 
