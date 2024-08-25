@@ -3,20 +3,36 @@ import time
 import numpy as np
 
 class Robot:
-    def __init__(self, in1, in2, ena, in3, in4, enb, wheel_diameter=5.5, wheel_base=10, frequency=1000):
-        # Motor 1 Pins
+    def __init__(self, in1, in2, ena, in3, in4, enb, enc_a1, enc_b1, enc_a2, enc_b2, wheel_diameter=0.055, wheel_base=0.30, frequency=1000):
+        # Motor 1 Pins (Right Motor)
         self.IN1 = in1
         self.IN2 = in2
         self.ENA = ena
 
-        # Motor 2 Pins
+        # Motor 2 Pins (Left Motor)
         self.IN3 = in3
         self.IN4 = in4
         self.ENB = enb
 
+        # Encoder pins for the left and right wheels
+        self.ENC_A1 = enc_a1  # Left wheel encoder A
+        self.ENC_B1 = enc_b1  # Left wheel encoder B
+        self.ENC_A2 = enc_a2  # Right wheel encoder A
+        self.ENC_B2 = enc_b2  # Right wheel encoder B
+
         # Wheel specifications
-        self.wheel_diameter = wheel_diameter  # in centimeters
-        self.wheel_base = wheel_base  # distance between wheels in centimeters
+        self.wheel_diameter = wheel_diameter  # in meters
+        self.wheel_base = wheel_base  # in meters
+        self.wheel_circumference = self.wheel_diameter * np.pi  # in meters
+
+        # PID constants
+        self.Kp = 1.0
+        self.Ki = 0.0
+        self.Kd = 0.1
+        self.integral_left = 0.0
+        self.integral_right = 0.0
+        self.last_error_left = 0.0
+        self.last_error_right = 0.0
 
         # Setup GPIO for motors
         GPIO.setmode(GPIO.BCM)
@@ -27,17 +43,39 @@ class Robot:
         GPIO.setup(self.IN4, GPIO.OUT)
         GPIO.setup(self.ENB, GPIO.OUT)
 
+        # Setup GPIO for encoders
+        GPIO.setup(self.ENC_A1, GPIO.IN)
+        GPIO.setup(self.ENC_B1, GPIO.IN)
+        GPIO.setup(self.ENC_A2, GPIO.IN)
+        GPIO.setup(self.ENC_B2, GPIO.IN)
+
         # Initialize PWM for motors
-        self.pwmA = GPIO.PWM(self.ENA, frequency)  # PWM frequency for Motor 1
-        self.pwmB = GPIO.PWM(self.ENB, frequency)  # PWM frequency for Motor 2
+        self.pwmA = GPIO.PWM(self.ENA, frequency)
+        self.pwmB = GPIO.PWM(self.ENB, frequency)
         self.pwmA.start(0)
         self.pwmB.start(0)
+
+        # Initialize encoder counts
+        self.encoder_count_left = 0
+        self.encoder_count_right = 0
+
+        # Attach interrupts to encoder pins
+        GPIO.add_event_detect(self.ENC_A1, GPIO.RISING, callback=self.encoder_callback_left)
+        GPIO.add_event_detect(self.ENC_A2, GPIO.RISING, callback=self.encoder_callback_right)
 
         # Robot's state [x, y, theta]
         self.state = np.array([0.0, 0.0, 0.0])
 
         # Path tracking list
         self.path = [self.state.copy()]
+
+    def encoder_callback_left(self, channel):
+        # Update left encoder count
+        self.encoder_count_left += 1
+
+    def encoder_callback_right(self, channel):
+        # Update right encoder count
+        self.encoder_count_right += 1
 
     def set_motor(self, motor, speed):
         if motor == 1:
@@ -61,6 +99,18 @@ class Robot:
     def __del__(self):
         self.cleanup()
 
+    def pid_control(self,dt):
+        # Read the actual speed
+
+
+
+
+
+
+        # Adjust motor speeds based on PID output
+        self.set_motor(2, np.clip(output_left, 0, 100))  # Left motor
+        self.set_motor(1, np.clip(output_right, 0, 100))  # Right motor
+
     def calculate_drive_time(self, object_location, speed):
         # object_location = [x, y, theta]
         # Calculate the distance to the target
@@ -76,10 +126,7 @@ class Robot:
     def drive(self, object_location, speed):
         # Calculate the time required to drive to the target location
         dt = self.calculate_drive_time(object_location, speed)
-
-        # Cap the time to a maximum of 5 seconds
-        dt = min(dt, 5)
-
+        
         # Compute the linear and angular velocities
         dx = object_location[0] - self.state[0]
         dy = object_location[1] - self.state[1]
@@ -93,16 +140,11 @@ class Robot:
         v_left = linear_velocity - (self.wheel_base / 2) * angular_velocity
         v_right = linear_velocity + (self.wheel_base / 2) * angular_velocity
 
-        # Convert velocities to PWM duty cycle (assuming linear relationship for simplicity)
-        pwm_left = np.clip(abs(v_left), 0, 100)
-        pwm_right = np.clip(abs(v_right), 0, 100)
-
-        # Set motor speeds based on calculated PWM values
-        self.set_motor(1, pwm_left if v_left >= 0 else -pwm_left)
-        self.set_motor(2, pwm_right if v_right >= 0 else -pwm_right)
-
-        # Drive for the calculated or capped duration
-        time.sleep(dt)
+        # Replace time.sleep with a loop that runs for the calculated time using PID
+        start_time = time.time()
+        while (time.time() - start_time) < dt:
+            self.pid_control(v_left, v_right, dt)
+            time.sleep(0.01)  # Small delay to avoid too frequent updates
 
         # Stop the motors after driving
         self.stop()
@@ -138,13 +180,18 @@ class Robot:
 # Example usage
 if __name__ == "__main__":
     try:
-        robot = Robot(17, 27, 18, 22, 23, 24)
+        robot = Robot(
+            in1=17, in2=27, ena=18, 
+            in3=22, in4=23, enb=24, 
+            enc_a1=5, enc_b1=6, enc_a2=16, enc_b2=26,
+            wheel_diameter=0.055, wheel_base=0.30
+        )
         
-        target_location = [1.0, 1.0, np.pi/4]  # Example target location
-        robot.drive(target_location, speed=50)
+        target_location = [1, 0, 0]  # Example target location (1 meter forward)
+        robot.drive(target_location, speed=0.2)  # Drive at 0.2 m/s
         
         # Now return to the starting position directly while rotating
-        robot.return_to_start_straight(speed=50)
+        # robot.return_to_start_straight(speed=0.2)
         
     except KeyboardInterrupt:
         pass
