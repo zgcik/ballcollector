@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
-from pid import PID
+from bot.pid import PID
+from camera.camera import Camera
 
 class Pi:
     def __init__(self):
@@ -76,7 +77,7 @@ class Pi:
     
     def enc_a_cb(self, channel):
         self.enc_count_a += 1
-        print('enca callback!')
+        # print('enca callback!')
     
     def enc_b_cb(self, channel):
         self.enc_count_b += 1
@@ -156,8 +157,8 @@ class Pi:
         pwm_right = self.pid_a.compute(right_speed, enc_right_speed)
         pwm_left = self.pid_b.compute(left_speed, enc_left_speed)
 
-        # pwm_right = self.rpm_to_pwm(pwm_right)
-        # pwm_left = self.rpm_to_pwm(pwm_left)
+        pwm_right = self.rpm_to_pwm(pwm_right)
+        pwm_left = self.rpm_to_pwm(pwm_left)
 
         # clamping pid outputs
         pwm_right = max(0.0, min(100.0, pwm_right))
