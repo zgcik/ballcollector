@@ -5,6 +5,12 @@ from camera.camera import Camera
 
 class Pi:
     def __init__(self):
+        # importing camera
+        self.cam = Camera(device=2)
+
+        # setting initial pose
+        self.rob_pose = [0, 0, 0]
+
         # set speed
         self.speed = 50 # pwm
         self.max_rpm = 90
@@ -176,7 +182,9 @@ class Pi:
         else:
             self.set_motorb_dir(0)
         self.set_motorb_speed(abs(pwm_left))
-        
+
+    def drive_to_point(self, point):
+        pass        
 
     def stop(self):
         self.pwm_a.ChangeDutyCycle(0)
@@ -187,16 +195,18 @@ class Pi:
         self.pwm_b.stop()
         GPIO.cleanup()
 
-    def set_motora(self, speed):
-        GPIO.output(self.dra_in1, GPIO.HIGH)
-        GPIO.output(self.dra_in2, GPIO.LOW)
-
 if __name__ == "__main__":
     pi = Pi()
 
     try:
         while True:
-            pi.diff_drive(pi.speed, 0.0)
+            detections = pi.cam.ball_detector(rob_pose)
+
+            # TODO:
+            if detections is not None:
+                pi.drive_to_point(detections[0])
+
+            # pi.diff_drive(pi.speed, 0.0)
     except KeyboardInterrupt:
         pi.stop()
         pi.cleanup()
