@@ -52,9 +52,9 @@ class Camera:
             os.path.join(script_dir, "calibration", "dist_matrix.npy")
         )
         self.circle_detector = CircleDetector(self.int_matrix, calibrate=False)
-        # self.object_detector = ObjectDetector(
-        #     os.path.join(os.path.dirname(__file__), "detectors/model.pt")
-        # )
+        self.object_detector = ObjectDetector(
+            os.path.join(os.path.dirname(__file__), "detectors/model.pt")
+        )
         self.line_detector = LineDetector(self.int_matrix)
         self.targets = []
 
@@ -110,7 +110,7 @@ class Camera:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger.info("headless mode: %s", headless)
     cam = Camera()
     while True:
