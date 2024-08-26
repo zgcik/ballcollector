@@ -1,12 +1,13 @@
 import RPi.GPIO as GPIO
 import time
 from bot.pid import PID
-from camera.camera import Camera
+import numpy as np
+#from camera.camera import Camera
 
 class Pi:
     def __init__(self):
         # importing camera
-        self.cam = Camera(device=2)
+        #self.cam = Camera(device=2)
 
         # setting initial pose
         self.rob_pose = [0, 0, 0]
@@ -19,21 +20,22 @@ class Pi:
         self.baseline = 0.028
         self.wheel = 0.300
 
-        # motor a: right
-        self.dra_in1 = 17
-        self.dra_in2 = 27
-        self.dra_ena = 18
+        # Motor A (Right Motor)
+        self.dra_in1 = 22   # Updated from GPIO 17 to GPIO 22
+        self.dra_in2 = 23   # Updated from GPIO 27 to GPIO 23
+        self.dra_ena = 12   # Updated from GPIO 18 to GPIO 12
 
-        self.dra_encodera = 5
-        self.dra_encoderb = 6
+        self.dra_encodera = 8  # Updated from GPIO 5 to GPIO 8
+        self.dra_encoderb = 7  # Updated from GPIO 6 to GPIO 7
 
-        # motor b: left
-        self.drb_in3 = 22
-        self.drb_in4 = 23
-        self.drb_enb = 19
+        # Motor B (Left Motor)
+        self.drb_in3 = 25   # Updated from GPIO 22 to GPIO 25
+        self.drb_in4 = 24   # Updated from GPIO 23 to GPIO 24
+        self.drb_enb = 13   # Updated from GPIO 19 to GPIO 13
 
-        self.drb_encodera = 12
-        self.drb_encoderb = 13
+        self.drb_encodera = 6  # Updated from GPIO 12 to GPIO 6
+        self.drb_encoderb = 5  # Updated from GPIO 13 to GPIO 5
+
 
         # initialize pid objects
         self.pid_a = PID(kp=0.01, ki=0.35, kd=0.01)
@@ -184,9 +186,56 @@ class Pi:
         self.set_motorb_speed(abs(pwm_left))
 
     def drive_to_point(self, point):
-        # TODO: call diff drive
-        # TODO: update rob pose
-        pass
+        """
+        Drive the robot to a specified point using differential drive.
+
+        :param point: Target point as [x, y] relative to the robot's current position.
+        """
+        target_x, target_y = point
+        current_x, current_y, current_theta = self.rob_pose
+        
+        # Calculate the difference between the target point and the current position
+        delta_x = target_x - current_x
+        delta_y = target_y - current_y
+
+        # Calculate the angle to the target point
+        target_angle = np.arctan2(delta_y, delta_x)
+
+        # Calculate the distance to the target point
+        distance_to_target = np.sqrt(delta_x**2 + delta_y**2)
+
+        # Calculate the required angular velocity to turn towards the target
+        angle_difference = target_angle - current_theta
+        angular_velocity = angle_difference  # This can be scaled if needed
+        print(angle_difference)
+        # Rotate the robot to face the target point
+        while abs(angle_difference) > 0.05:  # Threshold to stop rotation
+            print(angle_difference)
+            self.diff_drive(0, angular_velocity)  # Only rotate
+            time.sleep(0.1)
+            # Update robot pose based on encoder feedback
+            self.update_rob_pose(self.rob_pose)  # Assume this function updates self.rob_pose
+            # Recalculate the angle difference
+            _, _, current_theta = self.rob_pose
+            angle_difference = target_angle - current_theta
+            angular_velocity = angle_difference  # Adjust angular velocity based on new angle difference
+
+        # Drive straight towards the target point
+        linear_velocity = distance_to_target / 2  # This can be scaled if needed
+        print(linear_velocity)
+        while distance_to_target > 0.05:  # Threshold to stop driving
+            self.diff_drive(linear_velocity, 0)  # Drive straight
+            time.sleep(0.1)
+            # Update robot pose based on encoder feedback
+            self.update_rob_pose(self.rob_pose)  # Assume this function updates self.rob_pose
+            # Recalculate the distance to the target
+            current_x, current_y, _ = self.rob_pose
+            delta_x = target_x - current_x
+            delta_y = target_y - current_y
+            distance_to_target = np.sqrt(delta_x**2 + delta_y**2)
+
+        # Stop the robot at the target point
+        self.stop()
 
     def update_rob_pose(self, rob_pose):
         self.rob_pose = rob_pose
@@ -204,16 +253,17 @@ if __name__ == "__main__":
     pi = Pi()
 
     try:
-        while True:
-            detections = pi.cam.ball_detector(rob_pose)
+        pi.diff_drive(1,0)
+        # while True:
+        #     detections = pi.cam.ball_detector(rob_pose)
 
-            # TODO:
-            if detections is not None:
-                # TODO: calculate path
+        #     # TODO:
+        #     if detections is not None:
+        #         # TODO: calculate path
 
-                # TODO: call drive to point for each point in the path
+        #         # TODO: call drive to point for each point in the path
 
-            # TODO: drive back to start
+        #     # TODO: drive back to start
 
     except KeyboardInterrupt:
         pi.stop()
