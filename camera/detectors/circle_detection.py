@@ -8,6 +8,7 @@ import numpy as np
 import imutils
 import time
 
+from detectors.parameter_calibration import HsvCalibrator, HsvRangeCalibrator
 from detectors.detectors import BallDetection, BallDetector
 
 import logging
@@ -19,9 +20,10 @@ class CircleDetector(BallDetector):
     # Detection bounds
     max_count: int
 
-    def __init__(self, int_matrix, max_count=2) -> None:
-        self.green_lower = (29, 86, 6)
-        self.green_upper = (64, 255, 255)
+    def __init__(self, int_matrix, max_count=2, calibrate=True) -> None:
+        self.range = HsvRangeCalibrator(
+            "circle", calibrate, (29, 86, 6), (64, 255, 255)
+        )
         self.z = 0.0342
         self.int_matrix = int_matrix
         self.max_count = max_count
@@ -38,7 +40,7 @@ class CircleDetector(BallDetector):
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
         # construct a mask for the color "green"
-        mask = cv2.inRange(hsv, self.green_lower, self.green_upper)  # type: ignore
+        mask = cv2.inRange(hsv, self.range.lower.value(), self.range.upper.value())
         mask = cv2.erode(mask, None, iterations=2)  # type: ignore
         mask = cv2.dilate(mask, None, iterations=2)  # type: ignore
 

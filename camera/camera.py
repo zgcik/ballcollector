@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Optional
 import numpy as np
 import cv2
 from detectors.circle_detection import CircleDetector
@@ -26,8 +27,8 @@ def is_headless():
     return headless
 
 
-def imshow(name: str, frame: np.ndarray):
-    if not headless:
+def imshow(name: str, frame: Optional[np.ndarray]):
+    if not headless and frame is not None:
         cv2.imshow(name, frame)
         cv2.waitKey(1)
 
@@ -35,6 +36,8 @@ def imshow(name: str, frame: np.ndarray):
 class Camera:
     frame: cv2.typing.MatLike
     frame_gray: cv2.typing.MatLike
+    frame_hsv: cv2.typing.MatLike
+    debug_frame: Optional[cv2.typing.MatLike] = None
     circle_detector: CircleDetector
     oject_detector: ObjectDetector
     line_detector: LineDetector
@@ -48,10 +51,10 @@ class Camera:
         self.dist_matrix = np.load(
             os.path.join(script_dir, "calibration", "dist_matrix.npy")
         )
-        self.circle_detector = CircleDetector(self.int_matrix)
-        self.object_detector = ObjectDetector(
-            os.path.join(os.path.dirname(__file__), "detectors/model.pt")
-        )
+        self.circle_detector = CircleDetector(self.int_matrix, calibrate=False)
+        # self.object_detector = ObjectDetector(
+        #     os.path.join(os.path.dirname(__file__), "detectors/model.pt")
+        # )
         self.line_detector = LineDetector(self.int_matrix)
         self.targets = []
 
@@ -61,6 +64,9 @@ class Camera:
             return
         self.frame = self.undistort_img(frame)
         self.frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        self.frame_hsv = cv2.cvtColor(self.frame, cv2.COLOR_BGR2HSV)
+        if not headless:
+            self.debug_frame = deepcopy(self.frame)
 
     def undistort_img(self, frame):
         h, w = frame.shape[:2]
@@ -79,15 +85,9 @@ class Camera:
         return np.array([x, y])
 
     def find_balls(self):
-        if is_headless():
-            debug_frame = None
-        else:
-            debug_frame = deepcopy(self.frame)
-        balls = self.circle_detector.detect(self.frame, debug_frame)
+        balls = self.circle_detector.detect(self.frame, self.debug_frame)
         if len(balls) == 0:
-            balls = self.object_detector.detect(self.frame, debug_frame)
-        if debug_frame is not None:
-            imshow("debug", debug_frame)
+            balls = self.object_detector.detect(self.frame, self.debug_frame)
         return balls
 
     def ball_detector(self, rob_pose):
@@ -103,13 +103,9 @@ class Camera:
         return self.detections
 
     def find_lines(self):
-        if is_headless():
-            debug_frame = None
-        else:
-            debug_frame = deepcopy(self.frame)
-        lines = self.line_detector.detect(self.frame_gray, debug_frame)
-        if debug_frame is not None:
-            imshow("debug", debug_frame)
+        lines = self.line_detector.detect(
+            self.frame, self.frame_gray, self.frame_hsv, self.debug_frame
+        )
         return lines
 
 
@@ -124,3 +120,4 @@ if __name__ == "__main__":
 
         # circle detection
         circles = cam.find_lines()
+        imshow("debug", cam.debug_frame)
