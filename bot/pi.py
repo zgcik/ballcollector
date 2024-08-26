@@ -6,7 +6,7 @@ class Pi:
     def __init__(self):
         # set speed
         self.speed = 50 # pwm
-        self.max_rpm = 40
+        self.max_rpm = 90
 
         # TODO: importing baseline and wheel calibration
         self.baseline = 0.028
@@ -28,17 +28,12 @@ class Pi:
         self.drb_encodera = 12
         self.drb_encoderb = 13
 
-        # pid parameters
-        self.kp = 2.0
-        self.ki = 0.5
-        self.kd = 1.0
-
-        # initialize pid object
-        self.pid_a = PID(kp=2.0, ki=0.5, kd=1.0)
-        self.pid_b = PID(kp=2.0, ki=0.5, kd=1.0)
+        # initialize pid objects
+        self.pid_a = PID(kp=0.01, ki=0.35, kd=0.01)
+        self.pid_b = PID(kp=0.15, ki=0.35, kd=0.01)
 
         # pwm frequency
-        self.pwm_freq = 1000
+        self.pwm_freq = 10000
 
         # encoder pulse counts
         self.enc_count_a = 0
@@ -49,7 +44,7 @@ class Pi:
         
         # pwm objects for motor speed control
         self.pwm_a = GPIO.PWM(self.dra_ena, self.pwm_freq)
-        self.pwm_b = GPIO.PWM(self.dra_enb, self.pwm_freq)
+        self.pwm_b = GPIO.PWM(self.drb_enb, self.pwm_freq)
 
         # start pwm with 0% duty cycle (motors stopped)
         self.pwm_a.start(0)
@@ -70,20 +65,22 @@ class Pi:
         # motor b (left)
         GPIO.setup(self.drb_in3, GPIO.OUT)
         GPIO.setup(self.drb_in4, GPIO.OUT)
-        GPIO.setup(self.drb_ena, GPIO.OUT)
+        GPIO.setup(self.drb_enb, GPIO.OUT)
 
         GPIO.setup(self.drb_encodera, GPIO.IN)
         GPIO.setup(self.drb_encoderb, GPIO.IN)
 
         # event detection for encoders
-        GPIO.add_event_detect(self.dra_encodera, GPIO.BOTH, callback=self.enc_a_cb)
-        GPIO.add_event_detect(self.drb_encoderb, GPIO.BOTH, callback=self.enc_b_cb)
+        GPIO.add_event_detect(self.dra_encoderb, GPIO.RISING, callback=self.enc_a_cb)
+        GPIO.add_event_detect(self.drb_encoderb, GPIO.RISING, callback=self.enc_b_cb)
     
     def enc_a_cb(self, channel):
         self.enc_count_a += 1
+        print('enca callback!')
     
     def enc_b_cb(self, channel):
         self.enc_count_b += 1
+        # print('encb callback!')
 
     def rpm_to_pwm(self, rpm):
         duty_cycle = (rpm / self.max_rpm) * 100
@@ -111,11 +108,11 @@ class Pi:
 
         return speed_a, speed_b  
 
-    def set_motora_speed(self, speed):
-        self.pwm_a.ChangeDutyCycle(speed)
+    def set_motora_speed(self, pwm):
+        self.pwm_a.ChangeDutyCycle(pwm)
 
-    def set_motorb_speed(self, speed):
-        self.pwm_b.ChangeDutyCycle(speed)
+    def set_motorb_speed(self, pwm):
+        self.pwm_b.ChangeDutyCycle(pwm)
 
     def set_motora_dir(self, dir=1):
         if dir:
@@ -134,23 +131,23 @@ class Pi:
             GPIO.output(self.drb_in4, GPIO.HIGH)
 
     def update_motora_speed(self):
-        speeda, _ = self.get_enc_speeds(t_int=1)
+        speeda, _ = self.get_enc_speeds(t_int=0.1)
         pid_out = self.pid_a.compute(self.speed, speeda)
+        pid_out = self.rpm_to_pwm(pid_out)
         pid_out = max(0, min(100, pid_out))
-        pwm_out = self.rpm_to_pwm(pid_out)
-        self.set_motora_speed(pwm_out)
+        self.set_motora_speed(pid_out)
     
     def update_motorb_speed(self):
-        _, speedb = self.get_enc_speeds(t_int=1)
+        _, speedb = self.get_enc_speeds(t_int=0.1)
         pid_out = self.pid_b.compute(self.speed, speedb)
+        pid_out = self.rpm_to_pwm(pid_out)
         pid_out = max(0, min(100, pid_out))
-        pwm_out = self.rpm_to_pwm(pid_out)
-        self.set_motorb_speed(pwm_out)
+        self.set_motorb_speed(pid_out)
 
     def diff_drive(self, lin_vel, ang_vel):
         # target wheel speeds
         right_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
-        left_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
+        left_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
 
         # getting speeds from encoders
         enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=1)
@@ -159,13 +156,12 @@ class Pi:
         pwm_right = self.pid_a.compute(right_speed, enc_right_speed)
         pwm_left = self.pid_b.compute(left_speed, enc_left_speed)
 
-        # clamping pid outputs
-        pwm_right = max(0, min(100, pwm_right))
-        pwm_left = max(0, min(100, pwm_left))
+        # pwm_right = self.rpm_to_pwm(pwm_right)
+        # pwm_left = self.rpm_to_pwm(pwm_left)
 
-        # converting rpm to pwm
-        pwm_right = self.rpm_to_pwm(pwm_right)
-        pwm_left = self.rpm_to_pwm(pwm_left)
+        # clamping pid outputs
+        pwm_right = max(0.0, min(100.0, pwm_right))
+        pwm_left = max(0.0, min(100.0, pwm_left))
 
         # set motor speeds and directions
         if right_speed >= 0:
@@ -199,8 +195,7 @@ if __name__ == "__main__":
 
     try:
         while True:
-            pi.diff_drive(pi.speed, 0.1)
-            time.sleep(1)
+            pi.diff_drive(pi.speed, 0.0)
     except KeyboardInterrupt:
         pi.stop()
         pi.cleanup()
