@@ -65,13 +65,47 @@ class Robot:
             self.update_heading((self.state[2] + angle_diff) % (2 * math.pi))
 
     def drive_forward(self, distance):
-        """Drive the robot forward a specific distance."""
+        """Drive the robot forward a specific distance using encoder feedback."""
         if distance > 0.01:  # Threshold to avoid unnecessary movements
-            drive_time = self.calculate_drive_time(distance)
+            # Calculate the required number of wheel rotations
+            wheel_rotations_needed = distance / (2 * math.pi * self.wheel_radius)
+            # Convert wheel rotations to encoder steps
+            encoder_steps_needed = wheel_rotations_needed * self.motor1._ppr
+
+            # Reset encoders
+            self.motor1.reset_angle()
+            self.motor2.reset_angle()
+
+            # Set motors to maximum speed
             self.motor1.set_output(1)
             self.motor2.set_output(1)
-            print(drive_time)
-            time.sleep(drive_time)
+
+            # Track the total number of encoder steps
+            total_steps_motor1 = 0
+            total_steps_motor2 = 0
+
+            print(f"encoder_steps_needed: {encoder_steps_needed}")
+            # Drive until the required number of encoder steps is reached
+            while total_steps_motor1 < encoder_steps_needed or total_steps_motor2 < encoder_steps_needed:
+                # Get current encoder angles
+                angle_motor1 = self.motor1.get_angle()
+                angle_motor2 = self.motor2.get_angle()
+
+                # Convert angles to steps
+                steps_motor1 = angle_motor1 * self.motor1._ppr / 360
+                steps_motor2 = angle_motor2 * self.motor2._ppr / 360
+
+                # Update total steps
+                total_steps_motor1 = abs(steps_motor1)
+                total_steps_motor2 = abs(steps_motor2)
+
+
+                print(f"total_steps_motor1: {total_steps_motor1}")
+                
+                # Short sleep to prevent overloading the CPU
+                time.sleep(0.01)
+
+            # Stop motors
             self.motor1.set_output(0)
             self.motor2.set_output(0)
 
@@ -80,7 +114,6 @@ class Robot:
             new_y = self.state[1] + distance * math.sin(self.state[2])
             self.update_position([new_x, new_y])
 
-    
     def drive_to_location(self, target_location):
         """Drive the robot to the new location."""
         # Calculate the distance and angle to the target location
@@ -105,5 +138,5 @@ class Robot:
 if __name__ == "__main__":
     # Example usage
     robot = Robot()
-    robot.drive_to_location([0.5, 0])  # Drive to (0.5 meter, 0.36 meter)
+    robot.drive_to_location([0.5, 0])  # Drive to (0.5 meter, 0 meter)
     robot.cleanup()
