@@ -7,7 +7,7 @@ from detectors.object_detection import ObjectDetector
 from collections import deque
 import imutils
 import os
-import camera.target_est as target_est
+import target_est
 
 
 import logging
@@ -15,11 +15,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
+    cv2.imshow("", np.ndarray([]))
     cv2.waitKey(1)
     headless = False
-except:
+except cv2.error as e:
     headless = True
-logger.info("headless mode:", headless)
 
 
 def is_headless():
@@ -108,7 +108,8 @@ class Camera:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
+    logger.info("headless mode: %s", headless)
     cam = Camera()
     while True:
         cam.get_frame()

@@ -26,3 +26,8 @@ python3.11 -m venv .venv
 pip install -r requirements.txt
 ```
 
+To get proper headless opencv
+
+```sh
+pip uninstall opencv-python && pip install opencv-python-headless==4.10.0.84
+```

@@ -89,4 +89,5 @@ class CircleDetector(BallDetector):
                 # saving world coordinates
                 balls.append({"center": center, "radius": radius})
 
+        logger.debug("found circles: %s", balls)
         return balls
