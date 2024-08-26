@@ -103,7 +103,13 @@ class Camera:
         return self.detections
 
     def find_lines(self):
-        lines = self.line_detector.detect(self.frame_gray)
+        if is_headless():
+            debug_frame = None
+        else:
+            debug_frame = deepcopy(self.frame)
+        lines = self.line_detector.detect(self.frame_gray, debug_frame)
+        if debug_frame is not None:
+            imshow("debug", debug_frame)
         return lines
 
 
@@ -117,4 +123,4 @@ if __name__ == "__main__":
         # line_dis = cam.line_detector()  # TODO: requires calibration of parameters
 
         # circle detection
-        circles = cam.find_balls()
+        circles = cam.find_lines()
