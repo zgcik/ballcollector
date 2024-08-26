@@ -184,7 +184,12 @@ class Pi:
         self.set_motorb_speed(abs(pwm_left))
 
     def drive_to_point(self, point):
-        pass        
+        # TODO: call diff drive
+        # TODO: update rob pose
+        pass
+
+    def update_rob_pose(self, rob_pose):
+        self.rob_pose = rob_pose
 
     def stop(self):
         self.pwm_a.ChangeDutyCycle(0)
@@ -204,9 +209,12 @@ if __name__ == "__main__":
 
             # TODO:
             if detections is not None:
-                pi.drive_to_point(detections[0])
+                # TODO: calculate path
 
-            # pi.diff_drive(pi.speed, 0.0)
+                # TODO: call drive to point for each point in the path
+
+            # TODO: drive back to start
+
     except KeyboardInterrupt:
         pi.stop()
         pi.cleanup()
