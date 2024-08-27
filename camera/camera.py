@@ -139,7 +139,7 @@ class Camera:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logger.info("headless mode: %s", headless)
     cam = Camera()
     while True:
@@ -155,4 +155,4 @@ if __name__ == "__main__":
             cv2.circle(cam.debug_frame, (320, 240), 5, (255, 255, 0), 2)  # type: ignore
 
         imshow("debug", cam.debug_frame)
-        time.sleep(1)
+        # time.sleep(1)
