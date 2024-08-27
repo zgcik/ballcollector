@@ -151,7 +151,7 @@ if __name__ == "__main__":
 
         if ball_coords:
             logger.debug("Camera coord ball coordinates: %s", ball_coords)
-            logger.debug("frame size: %s", cam.frame.shape)
+            # Center crosshair
             cv2.circle(cam.debug_frame, (320, 240), 5, (255, 255, 0), 2)  # type: ignore
 
         imshow("debug", cam.debug_frame)
