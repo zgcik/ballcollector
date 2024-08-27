@@ -26,11 +26,15 @@ class ObjectDetector(BallDetector):
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
     ) -> tuple[list[Any], list[BallDetection]]:
-        bboxes = self.get_bboxes(frame)
+        bboxes, coords = self.get_bboxes(frame)
         logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
 
         balls = []
+        balls_coords_cam = []
+
+        for coord in coords:
+            balls_coords_cam.append(coord)
 
         for bbox in bboxes:
             xyxy = ops.xywh2xyxy(bbox[1])
@@ -62,13 +66,15 @@ class ObjectDetector(BallDetector):
                     self.class_colour[bbox[0]],
                     2,
                 )
-        return bboxes, balls
+
+        return bboxes, balls, balls_coords_cam
 
     def get_bboxes(self, cv_img):
         preds = self.model.predict(cv_img, imgsz=320, verbose=False)
 
         # get bounding box and class label for target(s) detected
         bboxes = []
+        coords = []
         for p in preds:
             boxes = p.boxes
             if boxes is None:
@@ -81,6 +87,16 @@ class ObjectDetector(BallDetector):
 
                 bboxes.append([p.names[int(box_label)], np.asarray(b_cord)])
 
-        return bboxes
+                x_cam_centre = b_cord[0] - 320
+                y_cam_centre = 240 - b_cord[1] 
+                angle_cam_centre = np.arctan2(y_cam_centre,x_cam_centre)
+
+                x = b_cord[0]
+                y = b_cord[1]
+                angle = np.arctan2(y,x)
+                tensor = [x,y,angle]
+                coords.append(np.array(tensor))
+
+        return bboxes, coords
 
     # testing

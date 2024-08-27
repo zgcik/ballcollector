@@ -79,16 +79,16 @@ class Camera:
         return undistorted
 
     def pixel_to_camera(self, pix_coords):
-        x = (pix_coords[0] - self.int_matrix[0, 2]) / self.int_matrix[0, 0]
-        y = (pix_coords[1] - self.int_matrix[1, 2]) / self.int_matrix[1, 1]
-
-        return np.array([x, y])
+        x = (pix_coords[0][0] - self.int_matrix[0, 2]) / self.int_matrix[0, 0]
+        y = (pix_coords[0][1] - self.int_matrix[1, 2]) / self.int_matrix[1, 1]
+        theta = pix_coords[0][2]
+        return np.array([x, y, theta])
 
     def find_balls(self):
-        balls = self.circle_detector.detect(self.frame, self.debug_frame)
-        if len(balls) == 0:
-            balls = self.object_detector.detect(self.frame, self.debug_frame)
-        return balls
+        #balls = self.circle_detector.detect(self.frame, self.debug_frame)
+        #if len(balls) == 0:
+        _, balls, balls_coords_cam = self.object_detector.detect(self.frame, self.debug_frame)
+        return balls, balls_coords_cam
 
     def ball_detector(self, rob_pose):
         bboxes, _ = self.object_detector.detect(self.frame)
@@ -119,5 +119,19 @@ if __name__ == "__main__":
         # line_dis = cam.line_detector()  # TODO: requires calibration of parameters
 
         # circle detection
-        circles = cam.find_lines()
+        #circles = cam.find_lines()
+
+        real_coords = []
+        balls, balls_coords_cam = cam.find_balls()
+        if balls_coords_cam:
+            print("Detected ball coordinates:", balls_coords_cam)
+        
+        pix_coords = balls_coords_cam
+        
+        for coords in pix_coords:
+            real_coords.append(cam.pixel_to_camera(balls_coords_cam))
+        
+        if real_coords:
+             print("Real world ball coordinates:", real_coords)
+
         imshow("debug", cam.debug_frame)
