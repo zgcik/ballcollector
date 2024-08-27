@@ -8,8 +8,11 @@ import numpy as np
 import imutils
 import time
 
-from detectors.parameter_calibration import HsvCalibrator, HsvRangeCalibrator
-from detectors.detectors import BallDetection, BallDetector
+from detectors.parameter_calibration import (
+    HsvRangeCalibrator,
+    ParameterCalibrator,
+)
+from detectors.detectors import BallDetector
 
 import logging
 
@@ -22,17 +25,19 @@ class CircleDetector(BallDetector):
 
     def __init__(self, int_matrix, max_count=2, calibrate=True) -> None:
         self.range = HsvRangeCalibrator(
-            "circle", calibrate, (29, 86, 6), (64, 255, 255)
+            "circle", calibrate, (29, 23, 69), (50, 255, 255)
         )
         self.z = 0.0342
         self.int_matrix = int_matrix
         self.max_count = max_count
+        self.open_kernel_size = ParameterCalibrator("contour", calibrate, 17, "open")
+        self.close_kernel_size = ParameterCalibrator("contour", calibrate, 29, "close")
 
     def detect(
         self,
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
-    ) -> list[BallDetection]:
+    ):
         """
         takes corrected bgr image
         """
@@ -41,16 +46,20 @@ class CircleDetector(BallDetector):
 
         # construct a mask for the color "green"
         mask = cv2.inRange(hsv, self.range.lower.value(), self.range.upper.value())
-        mask = cv2.erode(mask, None, iterations=2)  # type: ignore
-        mask = cv2.dilate(mask, None, iterations=2)  # type: ignore
-
-        # find contours in the mask and initialize the current (x, y) center of the ball
-        contours = cv2.findContours(
-            mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (self.open_kernel_size.value, self.open_kernel_size.value)
         )
-        contours = imutils.grab_contours(contours)
+        morph = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (self.close_kernel_size.value, self.close_kernel_size.value)
+        )
+        morph = cv2.morphologyEx(morph, cv2.MORPH_CLOSE, kernel)
+
         if debug_frame is not None:
-            cv2.imshow("mask", mask)
+            cv2.imshow("mask", morph)
+        # find contours in the mask and initialize the current (x, y) center of the ball
+        contours = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = imutils.grab_contours(contours)
 
         center = None
 
@@ -89,7 +98,7 @@ class CircleDetector(BallDetector):
                     )
 
                 # saving world coordinates
-                balls.append({"center": center, "radius": radius})
+                balls.append((center, radius))
 
-        logger.debug("found circles: %s", balls)
+        # logger.debug("found circles: %s", balls)
         return balls
