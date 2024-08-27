@@ -53,11 +53,15 @@ class Camera:
         self.dist_matrix = np.load(
             os.path.join(script_dir, "calibration", "dist_matrix.npy")
         )
-        self.circle_detector = CircleDetector(self.int_matrix, calibrate=False)
+        self.circle_detector = CircleDetector(
+            self.int_matrix, calibrate=(not headless and False)
+        )
         self.object_detector = ObjectDetector(
             os.path.join(os.path.dirname(__file__), "detectors/model.pt")
         )
-        self.line_detector = LineDetector(self.int_matrix, calibrate=(not headless))
+        self.line_detector = LineDetector(
+            self.int_matrix, calibrate=(not headless and False)
+        )
         self.targets = []
         self.camera_dims = (640, 480)
 
@@ -110,8 +114,8 @@ class Camera:
         return balls
 
     def find_balls_camera_coords(self):
-        balls, _ = self.object_detector.detect(self.frame, self.debug_frame)
-        logger.debug("balls: %s", balls)
+        balls = self.find_balls()
+        # logger.debug("balls: %s", balls)
         return list(
             map(
                 lambda x: (self.shift_origin(x[0]), x[1]),
@@ -139,20 +143,19 @@ class Camera:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     logger.info("headless mode: %s", headless)
     cam = Camera()
+    last_s = int(time.time())
     while True:
         cam.get_frame()
-        # circle detection
-        # circles = cam.find_lines()
-
         ball_coords = cam.find_balls_camera_coords()
 
-        if ball_coords:
+        if ball_coords and int(time.time()) > last_s:
             logger.debug("Camera coord ball coordinates: %s", ball_coords)
             # Center crosshair
             cv2.circle(cam.debug_frame, (320, 240), 5, (255, 255, 0), 2)  # type: ignore
+            last_s = int(time.time())
 
         imshow("debug", cam.debug_frame)
         # time.sleep(1)

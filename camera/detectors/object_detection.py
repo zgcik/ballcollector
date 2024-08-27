@@ -37,7 +37,7 @@ class ObjectDetector(BallDetector):
             bboxes: list of detections in format (class,tensor(x,y,w,h))
         """
         bboxes = self.get_bboxes(frame)
-        logger.debug("found bboxes: %s", bboxes)
+        # logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
 
         ball_coords = []
