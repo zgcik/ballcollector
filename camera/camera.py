@@ -1,7 +1,9 @@
 from copy import deepcopy
+import time
 from typing import Optional
 import numpy as np
 import cv2
+import torch
 from detectors.circle_detection import CircleDetector
 from detectors.line_detection import LineDetector
 from detectors.object_detection import ObjectDetector
@@ -55,8 +57,9 @@ class Camera:
         self.object_detector = ObjectDetector(
             os.path.join(os.path.dirname(__file__), "detectors/model.pt")
         )
-        self.line_detector = LineDetector(self.int_matrix)
+        self.line_detector = LineDetector(self.int_matrix, calibrate=(not headless))
         self.targets = []
+        self.camera_dims = (640, 480)
 
     def get_frame(self):
         _, frame = self.camera.read()
@@ -78,20 +81,46 @@ class Camera:
         )
         return undistorted
 
-    def pixel_to_camera(self, pix_coords):
-        x = (pix_coords[0][0] - self.int_matrix[0, 2]) / self.int_matrix[0, 0]
-        y = (pix_coords[0][1] - self.int_matrix[1, 2]) / self.int_matrix[1, 1]
-        theta = pix_coords[0][2]
-        return np.array([x, y, theta])
+    def pixel_to_camera(self, ball_info: tuple[tuple[float, float], float]):
+        """Get (x,y,z) camera coordinates of center of ball
+
+        Args:
+            ball_info (tuple[tuple[float,float],float]): _description_
+
+        Returns:
+            np.ndarray(float): (x,y,z) of ball in camera coordinates
+        """
+        center = ball_info[0]
+        x = (center[0] - self.int_matrix[0, 2]) / self.int_matrix[0, 0]
+        y = (center[1] - self.int_matrix[1, 2]) / self.int_matrix[1, 1]
+        return np.array([x, y, self.get_distance(ball_info[1])])
+
+    def get_distance(self, radius, z=0.0342):
+        z_est = (z * self.int_matrix[0][0]) / radius
+        return z_est
+
+    def shift_origin(self, coord):
+        x, y = coord[0] - self.camera_dims[0] / 2, self.camera_dims[1] / 2 - coord[1]
+        return (x, y)
 
     def find_balls(self):
-        #balls = self.circle_detector.detect(self.frame, self.debug_frame)
-        #if len(balls) == 0:
-        _, balls, balls_coords_cam = self.object_detector.detect(self.frame, self.debug_frame)
-        return balls, balls_coords_cam
+        # balls = self.circle_detector.detect(self.frame, self.debug_frame)
+        # if len(balls) == 0:
+        balls, _ = self.object_detector.detect(self.frame, self.debug_frame)
+        return balls
+
+    def find_balls_camera_coords(self):
+        balls, _ = self.object_detector.detect(self.frame, self.debug_frame)
+        logger.debug("balls: %s", balls)
+        return list(
+            map(
+                lambda x: (self.shift_origin(x[0]), x[1]),
+                balls,
+            )
+        )
 
     def ball_detector(self, rob_pose):
-        bboxes, _ = self.object_detector.detect(self.frame)
+        _, bboxes = self.object_detector.detect(self.frame)
         for detection in bboxes:
             self.targets.append(
                 target_est.target_pose_est(self.int_matrix, detection, rob_pose)
@@ -110,28 +139,20 @@ class Camera:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     logger.info("headless mode: %s", headless)
     cam = Camera()
     while True:
         cam.get_frame()
-        # line detection
-        # line_dis = cam.line_detector()  # TODO: requires calibration of parameters
-
         # circle detection
-        #circles = cam.find_lines()
+        # circles = cam.find_lines()
 
-        real_coords = []
-        balls, balls_coords_cam = cam.find_balls()
-        if balls_coords_cam:
-            print("Detected ball coordinates:", balls_coords_cam)
-        
-        pix_coords = balls_coords_cam
-        
-        for coords in pix_coords:
-            real_coords.append(cam.pixel_to_camera(balls_coords_cam))
-        
-        if real_coords:
-             print("Real world ball coordinates:", real_coords)
+        ball_coords = cam.find_balls_camera_coords()
+
+        if ball_coords:
+            logger.debug("Camera coord ball coordinates: %s", ball_coords)
+            logger.debug("frame size: %s", cam.frame.shape)
+            cv2.circle(cam.debug_frame, (320, 240), 5, (255, 255, 0), 2)  # type: ignore
 
         imshow("debug", cam.debug_frame)
+        time.sleep(1)
