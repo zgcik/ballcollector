@@ -42,14 +42,14 @@ class Camera:
         self.camera = cv2.VideoCapture(device)
         script_dir = os.path.dirname(__file__)
         self.int_matrix = np.load(
-            os.path.join(script_dir, "camera", "calibration", "int_matrix.npy")
+            os.path.join(script_dir, "calibration", "int_matrix.npy")
         )
         self.dist_matrix = np.load(
-            os.path.join(script_dir, "camera", "calibration", "dist_matrix.npy")
+            os.path.join(script_dir, "calibration", "dist_matrix.npy")
         )
         self.circle_detector = CircleDetector(self.int_matrix)
         self.object_detector = ObjectDetector(
-            os.path.join(os.path.dirname(__file__), "camera/detectors/model.pt")
+            os.path.join(os.path.dirname(__file__), "detectors/model.pt")
         )
         self.line_detector = LineDetector(self.int_matrix)
         self.targets = []

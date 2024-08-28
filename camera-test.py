@@ -25,7 +25,8 @@ if __name__ == "__main__":
     while True:
         cam.get_frame()
 
-        balls = cam.ball_detector((0, 0, 0))
+        # balls = cam.ball_detector((0, 0, 0))
+        balls = cam.find_balls()
 
         if cam.debug_frame is not None:
             cv2.circle(cam.debug_frame, (320, 240), 2, (0, 255, 0), 2)
