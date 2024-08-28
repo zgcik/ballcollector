@@ -7,6 +7,7 @@ from camera.detectors.object_detection import ObjectDetector
 from collections import deque
 import imutils
 import os
+from camera.detectors.parameter_calibration import ParameterCalibrator
 import camera.target_est as target_est
 
 
@@ -55,6 +56,7 @@ class Camera:
         self.targets = []
         self.debug_frame = None
         self.camera_dims = (640, 480)
+        self.camera_x_center_offset = ParameterCalibrator("offset", False, 42)
 
     def get_frame(self):
         _, frame = self.camera.read()
@@ -64,6 +66,13 @@ class Camera:
         self.frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
         if not is_headless():
             self.debug_frame = self.frame.copy()
+            x_center = int(self.camera_x_center_offset.value + self.camera_dims[0] / 2)
+            cv2.line(
+                self.debug_frame,
+                (x_center, 0),
+                (x_center, self.camera_dims[1]),
+                (0, 255, 0),
+            )
 
     def undistort_img(self, frame):
         h, w = frame.shape[:2]
@@ -105,7 +114,14 @@ class Camera:
         _, bboxes = self.object_detector.detect(self.frame, self.debug_frame)
         for detection in bboxes:
             self.targets.append(
-                target_est.target_pose_est(self.int_matrix, detection, rob_pose)
+                target_est.target_pose_est(
+                    self.int_matrix,
+                    detection,
+                    rob_pose,
+                    x_center=(
+                        int(self.camera_dims[0] / 2 + self.camera_x_center_offset.value)
+                    ),
+                )
             )
         if len(bboxes) > 0:
             self.targets = target_est.merge_ests(self.targets)

@@ -26,10 +26,9 @@ if __name__ == "__main__":
         cam.get_frame()
 
         # balls = cam.ball_detector((0, 0, 0))
-        balls = cam.find_balls_camera_coords()
+        balls = cam.ball_detector((0, 0, 0))
 
         if cam.debug_frame is not None:
-            cv2.circle(cam.debug_frame, (320, 240), 2, (0, 255, 0), 2)
             imshow("debug", cam.debug_frame)
 
         if last < int(time.time()):

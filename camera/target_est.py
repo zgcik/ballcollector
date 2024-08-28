@@ -4,7 +4,7 @@ from sklearn.cluster import MeanShift, DBSCAN, KMeans
 target_dims = {"Balls": 0.0342 * 2}
 
 
-def target_pose_est(int_matrix, detection, rob_pose):
+def target_pose_est(int_matrix, detection, rob_pose, x_center=320):
     # get information
     focal_length = int_matrix[0][0]
     target_class = detection[0]
@@ -16,7 +16,7 @@ def target_pose_est(int_matrix, detection, rob_pose):
     pix_h = target_box[3]
     pix_c = target_box[0]
     distance = true_height / pix_h * focal_length
-    x_shift = 320 - pix_c
+    x_shift = x_center - pix_c
     theta = np.arctan(x_shift / focal_length)
     ang = theta + rob_pose[2]
 
