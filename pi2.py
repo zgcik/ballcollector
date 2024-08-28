@@ -1,22 +1,21 @@
 import RPi.GPIO as GPIO
 import time
-from bot.pid import PID
-from camera.camera import Camera
 import numpy as np
+from bot.pid import PID
+# from camera.camera import Camera
 
 class Pi:
     def __init__(self):
         # importing camera
-        self.cam = Camera(device=0)
+        # self.cam = Camera(device=2)
 
         # setting initial pose
         self.rob_pose = [0, 0, 0]
 
         # set speed
-        self.speed = 50 # pwm
+        self.speed = 100 # pwm
         self.max_rpm = 90
         self.linear_speed = 0.05
-        self.path =[]
 
         # TODO: importing baseline and wheel calibration
         self.baseline = 0.0185
@@ -60,6 +59,8 @@ class Pi:
         self.pwm_a.start(0)
         self.pwm_b.start(0)
 
+        self.path =[]
+
     
     def setupGPIO(self):
         GPIO.setmode(GPIO.BCM)
@@ -96,7 +97,7 @@ class Pi:
         duty_cycle = (rpm / self.max_rpm) * 100
         return duty_cycle
 
-    def calc_speed(self, enc_count, t_int, ppr=48):
+    def calc_speed(self, enc_count, t_int, ppr=48*75):
         revs = enc_count / ppr
         speed_rpm = (revs / t_int) * 60
         return speed_rpm
@@ -156,115 +157,25 @@ class Pi:
 
     def drive(self, lin_vel, ang_vel):
         right_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
-        left_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
+        left_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
+        pwm_right = self.rpm_to_pwm(right_speed)
+        pwm_left = self.rpm_to_pwm(left_speed)
 
-        self.set_motora_speed(max(0.0, min(100.0, self.rpm_to_pwm(right_speed))))
-        self.set_motorb_speed(max(0.0, min(100.0, self.rpm_to_pwm(left_speed))))
+        pwm_right = max(0.0, min(100.0, pwm_right))
+        pwm_left = max(0.0, min(100.0, pwm_left))
 
-        # Determine motor directions
-        self.set_motora_dir(0 if right_speed >= 0 else 1)
-        self.set_motorb_dir(1 if left_speed >= 0 else 0)
+        self.set_motora_speed(abs(pwm_right))
+        self.set_motorb_speed(abs(pwm_left))
 
-        # Get current speeds from encoders
-        enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.01)
-        
-        # Compute PID outputs for each motor
-        pwm_right = self.pid_a.compute(abs(right_speed), enc_right_speed)
-        pwm_left = self.pid_b.compute(abs(left_speed), enc_left_speed)
+        speeda, speedb = self.get_enc_speeds(t_int=0.001)
+        pwm_right = self.pid_a.compute(right_speed, speeda)
+        pwm_left = self.pid_b.compute(left_speed, speedb)
+        pwm_right = max(0.0, min(100.0, pwm_right))
+        pwm_left = max(0.0, min(100.0, pwm_left))       
 
-        # Convert to PWM and clamp values
-        pwm_right = max(0.0, min(100.0, self.rpm_to_pwm(pwm_right)))
-        pwm_left = max(0.0, min(100.0, self.rpm_to_pwm(pwm_left)))
+        self.set_motora_speed(abs(pwm_right))
+        self.set_motorb_speed(abs(pwm_left))
 
-        # Set motor speeds
-        self.set_motora_speed(pwm_right)
-        self.set_motorb_speed(pwm_left)
-
-    def calculate_distance(self, point):
-        distance = np.sqrt((point[0] - self.rob_pose[0])**2 + (point[1] - self.rob_pose[1])**2)
-        return distance
-    
-    def calculate_angle(self,point):
-        dx = point[0] - self.rob_pose[0]
-        dy = point[0] - self.rob_pose[0]
-        theta = np.arctan2(dy,dx)
-        theta_normalised = (theta + np.pi) % (2*np.pi) -np.pi
-        return theta_normalised
-    
-    # def drive_to_point(self, point):  
-       
-    #     #Find the distance to the new Point:
-    #     distance = self.calculate_distance(point)
-
-    #     #Find the Angle of rotation:
-    #     angle = self.calculate_angle(point)
-
-    #     #Find the linear velocity:
-    #     dt_linear = distance / self.linear_speed
-    #     linear_vel = distance / dt_linear
-
-    #     #Find the angular velocity:
-    #     angular_vel = linear_vel*np.tan(angle)/self.baseline
-        
-    #     dt = time.time() + dt_linear
-
-    #     while time.time() < dt:
-    #         self.diff_drive(linear_vel,angular_vel)
-        
-    #     print('arrived')
-
-    #     self.update_rob_pose(distance,angle)
-
-    def drive_to_point(self, point):
-        # Find the distance to the new Point:
-        distance = self.calculate_distance(point)
-
-        # Find the Angle of rotation:
-        angle = self.calculate_angle(point)
-
-        # Rotate towards the target point
-        angular_vel = self.linear_speed * np.tan(angle) / self.baseline
-
-        print(angular_vel)
-        while abs(self.calculate_angle(point)) > 0.01:
-            self.diff_drive(0, angular_vel)
-
-        # Drive towards the target point
-        linear_vel = self.linear_speed
-        while self.calculate_distance(point) > 0.01:
-            self.diff_drive(linear_vel, 0)
-
-        print('arrived')
-
-        # Update the robot's pose
-        self.update_rob_pose(distance, angle)
-
-
-    # def diff_drive(self, lin_vel, ang_vel):
-    #     right_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
-    #     left_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
-
-    #     self.set_motora_speed(max(0.0, min(100.0, self.rpm_to_pwm(right_speed))))
-    #     self.set_motorb_speed(max(0.0, min(100.0, self.rpm_to_pwm(left_speed))))
-
-    #     # Determine motor directions
-    #     self.set_motora_dir(0 if right_speed >= 0 else 1)
-    #     self.set_motorb_dir(1 if left_speed >= 0 else 0)
-
-    #     # Get current speeds from encoders
-    #     enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.001)
-        
-    #     # Compute PID outputs for each motor
-    #     pwm_right = self.pid_a.compute(abs(right_speed), enc_right_speed)
-    #     pwm_left = self.pid_b.compute(abs(left_speed), enc_left_speed)
-
-    #     # Convert to PWM and clamp values
-    #     pwm_right = max(0.0, min(100.0, self.rpm_to_pwm(pwm_right)))
-    #     pwm_left = max(0.0, min(100.0, self.rpm_to_pwm(pwm_left)))
-
-    #     # Set motor speeds
-    #     self.set_motora_speed(pwm_right)
-    #     self.set_motorb_speed(pwm_left)
     def diff_drive(self, lin_vel, ang_vel):
         right_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
         left_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
@@ -288,8 +199,90 @@ class Pi:
         self.set_motora_speed(pwm_right)
         self.set_motorb_speed(pwm_left)
 
+
+
+    # def diff_drive(self, lin_vel, ang_vel):
+    #     # target wheel speeds
+    #     right_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
+    #     left_speed = (lin_vel - (ang_vel * self.baseline / 2)) / self.wheel
+
+    #     if right_speed >= 0:
+    #         self.set_motora_dir(0)
+    #     else:
+    #         self.set_motora_dir(1)
+    #     self.set_motora_speed(abs(self.rpm_to_pwm(right_speed)))
+
+    #     if left_speed >= 0:
+    #         self.set_motorb_dir(1)
+    #     else:
+    #         self.set_motorb_dir(0)
+    #     self.set_motorb_speed(abs(self.rpm_to_pwm(left_speed)))
+
+    #     # getting speeds from encoders
+    #     enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.001)
+        
+    #     # compute pid control outputs
+    #     pwm_right = self.pid_a.compute(right_speed, enc_right_speed)
+    #     pwm_left = self.pid_b.compute(left_speed, enc_left_speed)
+
+    #     pwm_right = self.rpm_to_pwm(pwm_right)
+    #     pwm_left = self.rpm_to_pwm(pwm_left)
+
+    #     # clamping pid outputs
+    #     pwm_right = max(0.0, min(100.0, pwm_right))
+    #     pwm_left = max(0.0, min(100.0, pwm_left))
+
+    #     # set motor speeds and directions
+    #     if right_speed >= 0:
+    #         self.set_motora_dir(0)
+    #     else:
+    #         pwm_right = self.pid_a.compute(right_speed, -enc_right_speed)
+    #         self.set_motora_dir(1)
+    #     self.set_motora_speed(abs(pwm_right))
+
+    #     if left_speed >= 0:
+    #         self.set_motorb_dir(1)
+    #     else:
+    #         pwm_left = self.pid_b.compute(left_speed, -enc_left_speed)
+    #         self.set_motorb_dir(0)
+    #     self.set_motorb_speed(abs(pwm_left))
+
+    def calculate_distance(self, point):
+        distance = np.sqrt((point[0] - self.rob_pose[0])**2 + (point[1] - self.rob_pose[1])**2)
+        return distance
+    
+    def calculate_angle(self,point):
+        dx = point[0] - self.rob_pose[0]
+        dy = point[0] - self.rob_pose[0]
+        theta = np.arctan2(dy,dx)
+        theta_normalised = (theta + np.pi) % (2*np.pi) -np.pi
+        return theta_normalised
+    
+    def drive_to_point(self, point):  
+       
+        #Find the distance to the new Point:
+        distance = self.calculate_distance(point)
+
+        #Find the Angle of rotation:
+        angle = self.calculate_angle(point)
+
+        #Find the linear velocity:
+        dt_linear = distance / self.linear_speed
+        linear_vel = distance / dt_linear
+
+        #Find the angular velocity:
+        angular_vel = linear_vel*np.tan(angle)/self.baseline
+        
+        dt = time.time() + dt_linear
+        print(1)
+        while time.time() < dt:
+            self.diff_drive(linear_vel,angular_vel)
+
+        self.update_rob_pose(distance,angle)
+
+        
     def update_rob_pose(self, distance, angle):
-        if distance > 0:
+        if distance >0:
             self.rob_pose[0] += distance * np.cos(self.rob_pose[2])
             self.rob_pose[1] += distance * np.sin(self.rob_pose[2])
 
@@ -307,35 +300,21 @@ class Pi:
 
 if __name__ == "__main__":
     pi = Pi()
-    # try:
-    #     point = [0,-1]
-    #     pi.drive_to_point(point)
-    #     pi.stop()
-    #     pi.cleanup()
-    # except KeyboardInterrupt:
-    #     pi.stop()
-    #     pi.cleanup()
+    #while True:
+    try:
+        #pi.diff_drive(10.0, -15.0)
+        point = [0,1]
+        pi.drive_to_point(point)
 
-    while True:
-        try:
-            frame = pi.cam.get_frame()
-            # cv2.imshow('camera feed', frame)
-            detections = pi.cam.ball_detector(pi.rob_pose)
+        # point = [0,-0.5]
 
-            ball = detections[0]
-            point = [ball['y'], ball['x']]
+        # pi.drive_to_point(point)
 
-            print(point)
 
-            pi.drive_to_point(point)
-            pi.stop()
-            pi.cleanup()
-            break
-
-        except KeyboardInterrupt:
-            pi.stop()
-            pi.cleanup()
-            break
+    except KeyboardInterrupt:
+        pi.stop()
+        pi.cleanup()
+        
 
     # try:
     #     while True:

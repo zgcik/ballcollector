@@ -1,13 +1,13 @@
 from copy import deepcopy
 import numpy as np
 import cv2
-from detectors.circle_detection import CircleDetector
-from detectors.line_detection import LineDetector
-from detectors.object_detection import ObjectDetector
+from camera.detectors.circle_detection import CircleDetector
+from camera.detectors.line_detection import LineDetector
+from camera.detectors.object_detection import ObjectDetector
 from collections import deque
 import imutils
 import os
-import target_est
+import camera.target_est as target_est
 
 
 import logging
@@ -96,11 +96,10 @@ class Camera:
             self.targets.append(
                 target_est.target_pose_est(self.int_matrix, detection, rob_pose)
             )
-
         if len(bboxes) > 0:
-            self.detections = target_est.merge_ests(self.detections)
+            self.targets = target_est.merge_ests(self.targets)
 
-        return self.detections
+        return self.targets
 
     def find_lines(self):
         lines = self.line_detector.detect(self.frame_gray)

@@ -8,14 +8,12 @@ import numpy as np
 import imutils
 import time
 
-from detectors.detectors import BallDetection, BallDetector
-
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class CircleDetector(BallDetector):
+class CircleDetector:
     # Detection bounds
     max_count: int
 
@@ -30,7 +28,7 @@ class CircleDetector(BallDetector):
         self,
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
-    ) -> list[BallDetection]:
+    ):
         """
         takes corrected bgr image
         """

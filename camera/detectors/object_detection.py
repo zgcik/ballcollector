@@ -5,7 +5,6 @@ import numpy as np
 from copy import deepcopy
 from ultralytics import YOLO
 from ultralytics.utils import ops
-from detectors.detectors import BallDetection, BallDetector
 import time
 
 import logging
@@ -13,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ObjectDetector(BallDetector):
+class ObjectDetector():
     def __init__(self, model_path):
         logger.info("initializing yolo: started")
         self.model = YOLO(model_path)
@@ -25,7 +24,7 @@ class ObjectDetector(BallDetector):
         self,
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
-    ) -> tuple[list[Any], list[BallDetection]]:
+    ):
         bboxes = self.get_bboxes(frame)
         logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
