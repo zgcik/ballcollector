@@ -4,30 +4,51 @@ import time
 import os
 
 # Motor pins (update these to match your motor driver connections)
-MOTOR_LEFT_PWM = 18
-MOTOR_RIGHT_PWM = 23
-MOTOR_LEFT_DIR = 24
-MOTOR_RIGHT_DIR = 25
+MOTOR_LEFT_PWM = 13
+MOTOR_RIGHT_PWM = 12
+MOTOR_LEFT_DIR = 25
+MOTOR_RIGHT_DIR = 22
 
-# Setup GPIO
+# # Setup GPIO
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(MOTOR_LEFT_PWM, GPIO.OUT)
+# GPIO.setup(MOTOR_RIGHT_PWM, GPIO.OUT)
+# GPIO.setup(MOTOR_LEFT_DIR, GPIO.OUT)
+# GPIO.setup(MOTOR_RIGHT_DIR, GPIO.OUT)
+
+
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(MOTOR_LEFT_PWM, GPIO.OUT)
-GPIO.setup(MOTOR_RIGHT_PWM, GPIO.OUT)
-GPIO.setup(MOTOR_LEFT_DIR, GPIO.OUT)
-GPIO.setup(MOTOR_RIGHT_DIR, GPIO.OUT)
+
+# motor a (right)
+GPIO.setup(27, GPIO.OUT)
+GPIO.setup(17, GPIO.OUT)
+GPIO.setup(18, GPIO.OUT)
+
+
+# motor b (left)
+GPIO.setup(22, GPIO.OUT)
+GPIO.setup(23, GPIO.OUT)
+GPIO.setup(19, GPIO.OUT)
+
 
 # PWM Frequency
 pwm_freq = 100
-left_pwm = GPIO.PWM(MOTOR_LEFT_PWM, pwm_freq)
-right_pwm = GPIO.PWM(MOTOR_RIGHT_PWM, pwm_freq)
+left_pwm = GPIO.PWM(18, pwm_freq)
+right_pwm = GPIO.PWM(19, pwm_freq)
 
 left_pwm.start(0)
 right_pwm.start(0)
 
+
 def set_motor_speeds(left_speed, right_speed, duration):
     # Set motor directions
-    GPIO.output(MOTOR_LEFT_DIR, GPIO.HIGH if left_speed >= 0 else GPIO.LOW)
-    GPIO.output(MOTOR_RIGHT_DIR, GPIO.HIGH if right_speed >= 0 else GPIO.LOW)
+    # Left motor
+    GPIO.output(17, GPIO.LOW)
+    GPIO.output(27, GPIO.HIGH)
+
+    # Right Motor
+    GPIO.output(23, GPIO.LOW)
+    GPIO.output(22, GPIO.HIGH)
 
     # Set PWM duty cycle
     left_pwm.ChangeDutyCycle(abs(left_speed))
@@ -39,6 +60,7 @@ def set_motor_speeds(left_speed, right_speed, duration):
     # Stop the motors
     left_pwm.ChangeDutyCycle(0)
     right_pwm.ChangeDutyCycle(0)
+
 
 def calibrateWheelRadius():
     wheel_velocities_range = range(20, 80, 15)
@@ -58,9 +80,11 @@ def calibrateWheelRadius():
             set_motor_speeds(wheel_vel, wheel_vel, delta_time)
 
             uInput = input("Did the robot travel 1m?[y/N]")
-            if uInput == 'y':
+            if uInput == "y":
                 delta_times.append(delta_time)
-                print(f"Recording that the robot drove 1m in {delta_time:.2f} seconds at {wheel_vel} speed.\n")
+                print(
+                    f"Recording that the robot drove 1m in {delta_time:.2f} seconds at {wheel_vel} speed.\n"
+                )
                 break
 
     scale_array = []
@@ -72,6 +96,7 @@ def calibrateWheelRadius():
     print(f"The scale parameter is estimated as {scale:.6f}")
 
     return scale
+
 
 def calibrateBaseline(scale):
     wheel_velocities_range = range(30, 60, 10)
@@ -91,9 +116,11 @@ def calibrateBaseline(scale):
             set_motor_speeds(wheel_vel, -wheel_vel, delta_time)
 
             uInput = input("Did the robot spin 360 degrees?[y/N]")
-            if uInput == 'y':
+            if uInput == "y":
                 delta_times.append(delta_time)
-                print(f"Recording that the robot spun 360 degrees in {delta_time:.2f} seconds at {wheel_vel} speed.\n")
+                print(
+                    f"Recording that the robot spun 360 degrees in {delta_time:.2f} seconds at {wheel_vel} speed.\n"
+                )
                 break
 
     baseline_array = []
@@ -105,20 +132,21 @@ def calibrateBaseline(scale):
 
     return baseline
 
+
 if __name__ == "__main__":
     dataDir = "{}/param/".format(os.getcwd())
 
-    print('Calibrating robot scale...\n')
+    print("Calibrating robot scale...\n")
     scale = calibrateWheelRadius()
     fileNameS = f"{dataDir}scale.txt"
-    np.savetxt(fileNameS, np.array([scale]), delimiter=',')
+    np.savetxt(fileNameS, np.array([scale]), delimiter=",")
 
-    print('Calibrating robot baseline...\n')
+    print("Calibrating robot baseline...\n")
     baseline = calibrateBaseline(scale)
     fileNameB = f"{dataDir}baseline.txt"
-    np.savetxt(fileNameB, np.array([baseline]), delimiter=',')
+    np.savetxt(fileNameB, np.array([baseline]), delimiter=",")
 
-    print('Finished calibration')
+    print("Finished calibration")
 
     # Clean up GPIO
     left_pwm.stop()

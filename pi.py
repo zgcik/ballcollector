@@ -90,11 +90,11 @@ class Pi:
 
     def enc_a_cb(self, channel):
         self.enc_count_a += 1
-        # print('enca callback!')
+        logger.debug(f"enca ticks: {self.enc_count_a}")
 
     def enc_b_cb(self, channel):
         self.enc_count_b += 1
-        # print('encb callback!')
+        logger.debug(f"encb ticks: {self.enc_count_b}")
 
     def rpm_to_pwm(self, rpm):
         duty_cycle = (rpm / self.max_rpm) * 100
@@ -312,6 +312,7 @@ class Pi:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     pi = Pi()
     # try:
     #     point = [0,-1]
@@ -321,47 +322,48 @@ if __name__ == "__main__":
     # except KeyboardInterrupt:
     #     pi.stop()
     #     pi.cleanup()
-
-    pi.drive_to_point((0, 1))
+    # pi.stop()
+    pi.drive_to_point((1, 0.5))
+    time.sleep(5)
     exit()
 
-    while True:
-        try:
-            frame = pi.cam.get_frame()
+    # while True:
+    #     try:
+    #         frame = pi.cam.get_frame()
 
-            detections = pi.cam.ball_detector(pi.rob_pose)
+    #         detections = pi.cam.ball_detector(pi.rob_pose)
 
-            if len(detections) == 0:
-                continue
+    #         if len(detections) == 0:
+    #             continue
 
-            ball = detections[0]
-            point = [ball["x"], ball["y"]]
+    #         ball = detections[0]
+    #         point = [ball["x"], ball["y"]]
 
-            logger.info("%s", point)
+    #         logger.info("%s", point)
 
-            # TODO: diff drive doesn't update rob pose so dtp never stops
-            pi.drive_to_point(point)
-            pi.stop()
-            pi.cleanup()
-            break
+    #         # TODO: diff drive doesn't update rob pose so dtp never stops
+    #         pi.drive_to_point(point)
+    #         pi.stop()
+    #         pi.cleanup()
+    #         break
 
-        except KeyboardInterrupt:
-            pi.stop()
-            pi.cleanup()
-            break
+    #     except KeyboardInterrupt:
+    #         pi.stop()
+    #         pi.cleanup()
+    #         break
 
-    # try:
-    #     while True:
-    #         detections = pi.cam.ball_detector(rob_pose)
+    # # try:
+    # #     while True:
+    # #         detections = pi.cam.ball_detector(rob_pose)
 
-    #         # TODO:
-    #         if detections is not None:
-    #             # TODO: calculate path
+    # #         # TODO:
+    # #         if detections is not None:
+    # #             # TODO: calculate path
 
-    #             # TODO: call drive to point for each point in the path
+    # #             # TODO: call drive to point for each point in the path
 
-    #         # TODO: drive back to start
+    # #         # TODO: drive back to start
 
-    # except KeyboardInterrupt:
-    #     pi.stop()
-    #     pi.cleanup()
+    # # except KeyboardInterrupt:
+    # #     pi.stop()
+    # #     pi.cleanup()
