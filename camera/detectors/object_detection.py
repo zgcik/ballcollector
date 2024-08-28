@@ -5,6 +5,7 @@ import numpy as np
 from copy import deepcopy
 from ultralytics import YOLO
 from ultralytics.utils import ops
+from detectors.detectors import BallDetection, BallDetector
 import time
 
 import logging
@@ -12,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ObjectDetector:
+class ObjectDetector(BallDetector):
     def __init__(self, model_path):
         logger.info("initializing yolo: started")
         self.model = YOLO(model_path)
@@ -25,24 +26,34 @@ class ObjectDetector:
         frame: cv2.typing.MatLike,
         debug_frame: Optional[cv2.typing.MatLike] = None,
     ):
+        """Detect tennis balls using yolo
+
+        Args:
+            frame (cv2.typing.MatLike): _description_
+            debug_frame (Optional[cv2.typing.MatLike], optional): _description_. Defaults to None.
+
+        Returns tuple:
+            ball_coords: list of detections in format (np.array(x,y),radius)
+            bboxes: list of detections in format (class,tensor(x,y,w,h))
+        """
         bboxes = self.get_bboxes(frame)
         # logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
 
-        balls = []
+        ball_coords = []
 
         for bbox in bboxes:
-            xyxy = ops.xywh2xyxy(bbox[1])
-            x1 = int(xyxy[0])
-            y1 = int(xyxy[1])
-            x2 = int(xyxy[2])
-            y2 = int(xyxy[3])
-            radius = (x2 - x1 + y2 - y1) / 2
-            center = ((x2 - x1) / 2, (y2 - y1) / 2)
-            balls.append({"center": center, "radius": radius})
+            x, y, w, h = bbox[1]
+            radius = (w + h) / 4
+            center = (
+                x,
+                y,
+            )  # NOTE: from testing, yolo seems to give these as center instead of top-left as expected
+            ball_coords.append((center, radius))
 
             # draw bounding box
             if debug_frame is not None:
+                x1, y1, x2, y2 = np.asarray(ops.xywh2xyxy(bbox[1])).astype(np.int64)
                 cv2.rectangle(
                     debug_frame,
                     (x1, y1),
@@ -50,7 +61,6 @@ class ObjectDetector:
                     self.class_colour[bbox[0]],
                     thickness=2,
                 )
-                cv2.circle(debug_frame, bbox[1][:2].astype(np.int64), 2, (255, 0, 0), 2)
 
                 # draw class label
                 cv2.putText(
@@ -62,13 +72,26 @@ class ObjectDetector:
                     self.class_colour[bbox[0]],
                     2,
                 )
-        return bboxes, balls
+
+        return (
+            ball_coords,
+            bboxes,
+        )
 
     def get_bboxes(self, cv_img):
+        """Find tennis ball bounding boxes using yolo
+
+        Args:
+            cv_img (_type_): _description_
+
+        Returns:
+            bboxes: list of detections in form (class,tensor(x,y,w,h))
+        """
         preds = self.model.predict(cv_img, imgsz=320, verbose=False)
 
         # get bounding box and class label for target(s) detected
         bboxes = []
+        coords = []
         for p in preds:
             boxes = p.boxes
             if boxes is None:
