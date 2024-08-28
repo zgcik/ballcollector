@@ -83,11 +83,11 @@ class Camera:
     def find_balls(self):
         balls = self.circle_detector.detect(self.frame, self.debug_frame)
         if len(balls) == 0:
-            balls = self.object_detector.detect(self.frame, self.debug_frame)
+            balls, _ = self.object_detector.detect(self.frame, self.debug_frame)
         return balls
 
     def ball_detector(self, rob_pose):
-        bboxes, _ = self.object_detector.detect(self.frame, self.debug_frame)
+        _, bboxes = self.object_detector.detect(self.frame, self.debug_frame)
         for detection in bboxes:
             self.targets.append(
                 target_est.target_pose_est(self.int_matrix, detection, rob_pose)
