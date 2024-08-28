@@ -1,7 +1,8 @@
 import RPi.GPIO as GPIO
 import time
 from bot.pid import PID
-from camera.camera import Camera
+
+# from camera.camera import Camera
 import numpy as np
 import logging
 
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 class Pi:
     def __init__(self):
         # importing camera
-        self.cam = Camera(device=0)
+        # self.cam = Camera(device=0)
 
         # setting initial pose
         self.rob_pose = [0, 0, 0]
@@ -192,7 +193,7 @@ class Pi:
     def calculate_angle(self, point):
         dx = point[0] - self.rob_pose[0]
         dy = point[1] - self.rob_pose[1]
-        theta = np.arctan2(dy, dx)
+        theta = np.arctan2(dx, dy)
         theta_normalised = (theta + np.pi) % (2 * np.pi) - np.pi
         return theta_normalised
 
@@ -320,6 +321,9 @@ if __name__ == "__main__":
     # except KeyboardInterrupt:
     #     pi.stop()
     #     pi.cleanup()
+
+    pi.drive_to_point((0, 1))
+    exit()
 
     while True:
         try:
