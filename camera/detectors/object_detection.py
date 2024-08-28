@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ObjectDetector():
+class ObjectDetector:
     def __init__(self, model_path):
         logger.info("initializing yolo: started")
         self.model = YOLO(model_path)
@@ -26,7 +26,7 @@ class ObjectDetector():
         debug_frame: Optional[cv2.typing.MatLike] = None,
     ):
         bboxes = self.get_bboxes(frame)
-        logger.debug("found bboxes: %s", bboxes)
+        # logger.debug("found bboxes: %s", bboxes)
         img_out = deepcopy(frame)
 
         balls = []
@@ -50,6 +50,7 @@ class ObjectDetector():
                     self.class_colour[bbox[0]],
                     thickness=2,
                 )
+                cv2.circle(debug_frame, bbox[1][:2].astype(np.int64), 2, (255, 0, 0), 2)
 
                 # draw class label
                 cv2.putText(

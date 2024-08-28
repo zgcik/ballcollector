@@ -15,7 +15,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    cv2.imshow("", np.ndarray([]))
     cv2.waitKey(1)
     headless = False
 except cv2.error as e:
@@ -43,17 +42,18 @@ class Camera:
         self.camera = cv2.VideoCapture(device)
         script_dir = os.path.dirname(__file__)
         self.int_matrix = np.load(
-            os.path.join(script_dir, "calibration", "int_matrix.npy")
+            os.path.join(script_dir, "camera", "calibration", "int_matrix.npy")
         )
         self.dist_matrix = np.load(
-            os.path.join(script_dir, "calibration", "dist_matrix.npy")
+            os.path.join(script_dir, "camera", "calibration", "dist_matrix.npy")
         )
         self.circle_detector = CircleDetector(self.int_matrix)
         self.object_detector = ObjectDetector(
-            os.path.join(os.path.dirname(__file__), "detectors/model.pt")
+            os.path.join(os.path.dirname(__file__), "camera/detectors/model.pt")
         )
         self.line_detector = LineDetector(self.int_matrix)
         self.targets = []
+        self.debug_frame = None
 
     def get_frame(self):
         _, frame = self.camera.read()
@@ -61,6 +61,8 @@ class Camera:
             return
         self.frame = self.undistort_img(frame)
         self.frame_gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        if not is_headless():
+            self.debug_frame = self.frame.copy()
 
     def undistort_img(self, frame):
         h, w = frame.shape[:2]
@@ -79,19 +81,13 @@ class Camera:
         return np.array([x, y])
 
     def find_balls(self):
-        if is_headless():
-            debug_frame = None
-        else:
-            debug_frame = deepcopy(self.frame)
-        balls = self.circle_detector.detect(self.frame, debug_frame)
+        balls = self.circle_detector.detect(self.frame, self.debug_frame)
         if len(balls) == 0:
-            balls = self.object_detector.detect(self.frame, debug_frame)
-        if debug_frame is not None:
-            imshow("debug", debug_frame)
+            balls = self.object_detector.detect(self.frame, self.debug_frame)
         return balls
 
     def ball_detector(self, rob_pose):
-        bboxes, _ = self.object_detector.detect(self.frame)
+        bboxes, _ = self.object_detector.detect(self.frame, self.debug_frame)
         for detection in bboxes:
             self.targets.append(
                 target_est.target_pose_est(self.int_matrix, detection, rob_pose)

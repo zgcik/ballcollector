@@ -3,6 +3,10 @@ import time
 from bot.pid import PID
 from camera.camera import Camera
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Pi:
     def __init__(self):
@@ -13,10 +17,10 @@ class Pi:
         self.rob_pose = [0, 0, 0]
 
         # set speed
-        self.speed = 50 # pwm
+        self.speed = 50  # pwm
         self.max_rpm = 90
         self.linear_speed = 0.05
-        self.path =[]
+        self.path = []
 
         # TODO: importing baseline and wheel calibration
         self.baseline = 0.0185
@@ -51,7 +55,7 @@ class Pi:
 
         # setting up GPIO
         self.setupGPIO()
-        
+
         # pwm objects for motor speed control
         self.pwm_a = GPIO.PWM(self.dra_ena, self.pwm_freq)
         self.pwm_b = GPIO.PWM(self.drb_enb, self.pwm_freq)
@@ -60,7 +64,6 @@ class Pi:
         self.pwm_a.start(0)
         self.pwm_b.start(0)
 
-    
     def setupGPIO(self):
         GPIO.setmode(GPIO.BCM)
 
@@ -83,11 +86,11 @@ class Pi:
         # event detection for encoders
         GPIO.add_event_detect(self.dra_encoderb, GPIO.RISING, callback=self.enc_a_cb)
         GPIO.add_event_detect(self.drb_encoderb, GPIO.RISING, callback=self.enc_b_cb)
-    
+
     def enc_a_cb(self, channel):
         self.enc_count_a += 1
         # print('enca callback!')
-    
+
     def enc_b_cb(self, channel):
         self.enc_count_b += 1
         # print('encb callback!')
@@ -114,9 +117,9 @@ class Pi:
 
         # calculate speeds in rpm
         speed_a = self.calc_speed(pulses_a, t_int)
-        speed_b = self.calc_speed(pulses_b, t_int)      
+        speed_b = self.calc_speed(pulses_b, t_int)
 
-        return speed_a, speed_b  
+        return speed_a, speed_b
 
     def set_motora_speed(self, pwm):
         self.pwm_a.ChangeDutyCycle(pwm)
@@ -131,7 +134,7 @@ class Pi:
         else:
             GPIO.output(self.dra_in1, GPIO.LOW)
             GPIO.output(self.dra_in2, GPIO.HIGH)
-    
+
     def set_motorb_dir(self, dir=1):
         if dir:
             GPIO.output(self.drb_in3, GPIO.HIGH)
@@ -146,7 +149,7 @@ class Pi:
         pid_out = self.rpm_to_pwm(pid_out)
         pid_out = max(0, min(100, pid_out))
         self.set_motora_speed(pid_out)
-    
+
     def update_motorb_speed(self):
         _, speedb = self.get_enc_speeds(t_int=0.1)
         pid_out = self.pid_b.compute(self.speed, speedb)
@@ -167,7 +170,7 @@ class Pi:
 
         # Get current speeds from encoders
         enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.01)
-        
+
         # Compute PID outputs for each motor
         pwm_right = self.pid_a.compute(abs(right_speed), enc_right_speed)
         pwm_left = self.pid_b.compute(abs(left_speed), enc_left_speed)
@@ -181,18 +184,20 @@ class Pi:
         self.set_motorb_speed(pwm_left)
 
     def calculate_distance(self, point):
-        distance = np.sqrt((point[0] - self.rob_pose[0])**2 + (point[1] - self.rob_pose[1])**2)
+        distance = np.sqrt(
+            (point[0] - self.rob_pose[0]) ** 2 + (point[1] - self.rob_pose[1]) ** 2
+        )
         return distance
-    
-    def calculate_angle(self,point):
+
+    def calculate_angle(self, point):
         dx = point[0] - self.rob_pose[0]
-        dy = point[0] - self.rob_pose[0]
-        theta = np.arctan2(dy,dx)
-        theta_normalised = (theta + np.pi) % (2*np.pi) -np.pi
+        dy = point[1] - self.rob_pose[1]
+        theta = np.arctan2(dy, dx)
+        theta_normalised = (theta + np.pi) % (2 * np.pi) - np.pi
         return theta_normalised
-    
-    # def drive_to_point(self, point):  
-       
+
+    # def drive_to_point(self, point):
+
     #     #Find the distance to the new Point:
     #     distance = self.calculate_distance(point)
 
@@ -205,12 +210,12 @@ class Pi:
 
     #     #Find the angular velocity:
     #     angular_vel = linear_vel*np.tan(angle)/self.baseline
-        
+
     #     dt = time.time() + dt_linear
 
     #     while time.time() < dt:
     #         self.diff_drive(linear_vel,angular_vel)
-        
+
     #     print('arrived')
 
     #     self.update_rob_pose(distance,angle)
@@ -225,7 +230,7 @@ class Pi:
         # Rotate towards the target point
         angular_vel = self.linear_speed * np.tan(angle) / self.baseline
 
-        print(angular_vel)
+        logger.info("%s", angular_vel)
         while abs(self.calculate_angle(point)) > 0.01:
             self.diff_drive(0, angular_vel)
 
@@ -234,11 +239,10 @@ class Pi:
         while self.calculate_distance(point) > 0.01:
             self.diff_drive(linear_vel, 0)
 
-        print('arrived')
+        logger.info("arrived")
 
         # Update the robot's pose
         self.update_rob_pose(distance, angle)
-
 
     # def diff_drive(self, lin_vel, ang_vel):
     #     right_speed = (lin_vel + (ang_vel * self.baseline / 2)) / self.wheel
@@ -253,7 +257,7 @@ class Pi:
 
     #     # Get current speeds from encoders
     #     enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.001)
-        
+
     #     # Compute PID outputs for each motor
     #     pwm_right = self.pid_a.compute(abs(right_speed), enc_right_speed)
     #     pwm_left = self.pid_b.compute(abs(left_speed), enc_left_speed)
@@ -275,7 +279,7 @@ class Pi:
 
         # Get current speeds from encoders
         enc_right_speed, enc_left_speed = self.get_enc_speeds(t_int=0.001)
-        
+
         # Compute PID outputs for each motor
         pwm_right = self.pid_a.compute(abs(right_speed), enc_right_speed)
         pwm_left = self.pid_b.compute(abs(left_speed), enc_left_speed)
@@ -293,7 +297,7 @@ class Pi:
             self.rob_pose[0] += distance * np.cos(self.rob_pose[2])
             self.rob_pose[1] += distance * np.sin(self.rob_pose[2])
 
-        self.rob_pose[2] = (self.rob_pose[2] + angle)%(2*np.pi)
+        self.rob_pose[2] = (self.rob_pose[2] + angle) % (2 * np.pi)
         self.path.append(self.rob_pose.copy())
 
     def stop(self):
@@ -304,6 +308,7 @@ class Pi:
         self.pwm_a.stop()
         self.pwm_b.stop()
         GPIO.cleanup()
+
 
 if __name__ == "__main__":
     pi = Pi()
@@ -319,14 +324,18 @@ if __name__ == "__main__":
     while True:
         try:
             frame = pi.cam.get_frame()
-            # cv2.imshow('camera feed', frame)
+
             detections = pi.cam.ball_detector(pi.rob_pose)
 
+            if len(detections) == 0:
+                continue
+
             ball = detections[0]
-            point = [ball['y'], ball['x']]
+            point = [ball["x"], ball["y"]]
 
-            print(point)
+            logger.info("%s", point)
 
+            # TODO: diff drive doesn't update rob pose so dtp never stops
             pi.drive_to_point(point)
             pi.stop()
             pi.cleanup()
