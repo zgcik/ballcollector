@@ -61,7 +61,7 @@ def main():
     robot = Robot()
     
     #Drive to center
-    robot.drive_to_location([0.5,0.5]) #[2.5,2]
+    robot.drive_to_location([2.5,2]) #[2.5,2]
 
 
     # Detect the ball
