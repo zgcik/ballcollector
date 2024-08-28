@@ -47,13 +47,14 @@ class Camera:
         self.dist_matrix = np.load(
             os.path.join(script_dir, "calibration", "dist_matrix.npy")
         )
-        self.circle_detector = CircleDetector(self.int_matrix)
+        self.circle_detector = CircleDetector(self.int_matrix, calibrate=False)
         self.object_detector = ObjectDetector(
             os.path.join(os.path.dirname(__file__), "detectors/model.pt")
         )
         self.line_detector = LineDetector(self.int_matrix)
         self.targets = []
         self.debug_frame = None
+        self.camera_dims = (640, 480)
 
     def get_frame(self):
         _, frame = self.camera.read()
@@ -79,6 +80,20 @@ class Camera:
         y = (pix_coords[1] - self.int_matrix[1, 2]) / self.int_matrix[1, 1]
 
         return np.array([x, y])
+
+    def shift_origin(self, coord):
+        x, y = coord[0] - self.camera_dims[0] / 2, self.camera_dims[1] / 2 - coord[1]
+        return (x, y)
+
+    def find_balls_camera_coords(self):
+        balls = self.find_balls()
+        # logger.debug("balls: %s", balls)
+        return list(
+            map(
+                lambda x: (self.shift_origin(x[0]), x[1]),
+                balls,
+            )
+        )
 
     def find_balls(self):
         balls = self.circle_detector.detect(self.frame, self.debug_frame)
